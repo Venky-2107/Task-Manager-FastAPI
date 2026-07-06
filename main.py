@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from database import engine, Base
 from routers import auth, users, tasks
 import time
+import models
 
 app = FastAPI()
 Base.metadata.create_all(bind=engine)
