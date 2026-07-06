@@ -15,7 +15,7 @@ if SQLALCHEMY_DATABASE_URL.startswith("postgres://"):
 connect_args = {"check_same_thread": False} if "sqlite" in SQLALCHEMY_DATABASE_URL else {}
 
 # creating the db file 
-engine = create_engine('sqlite:///app.db')
+engine = create_engine(SQLALCHEMY_DATABASE_URL)
 
 # creating the local session
 SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False)
