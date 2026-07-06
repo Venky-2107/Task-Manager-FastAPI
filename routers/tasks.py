@@ -1,15 +1,28 @@
-from fastapi import Depends, HTTPException, APIRouter
+from fastapi import Depends, HTTPException, APIRouter, WebSocket
 from schemas import CreateTaskRequest, CreateTaskResponse 
 from sqlalchemy.orm import Session
 from database import get_db
 from oauth2 import get_current_user
 from models import Task, User
+from websocket_manager import manager
+import json
 
 task_router = APIRouter(prefix='/tasks', tags=["tasks"])
 
+@task_router.websocket("/ws")
+async def websocket_connection(websocket: WebSocket):
+    await manager.connect(websocket)
+    try: 
+        while True:
+            # keeps connection alive
+            data = await websocket.receive_text() 
+    except: 
+        manager.disconnect(websocket)
+    
+
 # create tasks
 @task_router.post('/', status_code=201, response_model=CreateTaskResponse)
-def create_task(task: CreateTaskRequest, current_user=Depends(get_current_user), db: Session = Depends(get_db)):
+async def create_task(task: CreateTaskRequest, current_user=Depends(get_current_user), db: Session = Depends(get_db)):
     # since we stored the email as sub in auth.py
     user_email = current_user['sub']
     
@@ -32,6 +45,7 @@ def create_task(task: CreateTaskRequest, current_user=Depends(get_current_user),
     
     db.add(new_task)
     db.commit()
+    await manager.broadcast(json.dumps({"event": "task_created"}))
     db.refresh(new_task)
     
     return new_task
@@ -62,7 +76,7 @@ def get_task_by_id(task_id: int, current_user=Depends(get_current_user), db: Ses
 
 # update task by id
 @task_router.put('/{task_id}', status_code=200, response_model=CreateTaskResponse)
-def update_task(task_id: int, task: CreateTaskRequest, current_user=Depends(get_current_user), db: Session = Depends(get_db)):
+async def update_task(task_id: int, task: CreateTaskRequest, current_user=Depends(get_current_user), db: Session = Depends(get_db)):
     is_task = db.query(Task).filter(Task.id == task_id).first()
     
     if not is_task:
@@ -75,13 +89,14 @@ def update_task(task_id: int, task: CreateTaskRequest, current_user=Depends(get_
     is_task.due_date = task.due_date
     
     db.commit()
+    await manager.broadcast(json.dumps({"event": "task_updated"}))
     db.refresh(is_task)
     
     return is_task
 
 # delete task
 @task_router.delete('/{task_id}', status_code=200)
-def delete_task(task_id: int, current_user=Depends(get_current_user), db: Session = Depends(get_db)):
+async def delete_task(task_id: int, current_user=Depends(get_current_user), db: Session = Depends(get_db)):
     is_task = db.query(Task).filter(Task.id == task_id).first()
     
     if not is_task:
@@ -89,6 +104,7 @@ def delete_task(task_id: int, current_user=Depends(get_current_user), db: Sessio
     
     db.delete(is_task)    
     db.commit()
+    await manager.broadcast(json.dumps({"event": "task_deleted"}))
     
     return {"message": "task deleted!!!"}
 
