@@ -10,7 +10,7 @@ Base.metadata.create_all(bind=engine)
 # middleware for CORS -> Cross Origin Resource sharing
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],
+    allow_origins=["http://localhost:5173", "https://task-manager-nnq7qf2fy-venky-2107s-projects.vercel.app"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"]
