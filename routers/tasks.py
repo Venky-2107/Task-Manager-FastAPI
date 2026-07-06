@@ -5,19 +5,25 @@ from database import get_db
 from oauth2 import get_current_user
 from models import Task, User
 from websocket_manager import manager
+from auth import decode_access_token
 import json
 
 task_router = APIRouter(prefix='/tasks', tags=["tasks"])
 
 @task_router.websocket("/ws")
-async def websocket_connection(websocket: WebSocket):
-    await manager.connect(websocket)
-    try: 
-        while True:
-            # keeps connection alive
-            data = await websocket.receive_text() 
-    except: 
-        manager.disconnect(websocket)
+async def websocket_connection(websocket: WebSocket, token:str):
+    token_retrieved = decode_access_token(token)
+    
+    if token_retrieved is None:
+        await websocket.close(code=1008)
+    else:
+        await manager.connect(websocket)
+        try: 
+            while True:
+                # keeps connection alive
+                data = await websocket.receive_text() 
+        except: 
+            manager.disconnect(websocket)
     
 
 # create tasks
